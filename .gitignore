@@ -3,7 +3,7 @@
 # Edit at https://www.gitignore.io/?templates=git,python
 
 ### Vscode ###
-#.vscode/
+.vscode/
 
 ### Git ###
 # Created by git for backups. To disable backups in Git:
