@@ -10,6 +10,7 @@ autopep8 = "*"
 [packages]
 pytest = "*"
 ipython = "*"
+progress = "*"
 
 [requires]
 python_version = "3.7"
