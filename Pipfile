@@ -11,6 +11,7 @@ autopep8 = "*"
 pytest = "*"
 ipython = "*"
 progress = "*"
+click = "*"
 
 [requires]
 python_version = "3.7"
