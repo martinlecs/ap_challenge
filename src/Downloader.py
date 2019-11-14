@@ -1,112 +1,227 @@
-from ftplib import FTP
+"""A one line summary of the module or program, terminated by a period.
+
+Leave one blank line.  The rest of this docstring should contain an
+overall description of the module or program.  Optionally, it may also
+contain a brief description of exported classes and functions and/or usage
+examples.
+
+  Typical usage example:
+
+  foo = RinexFTPDownloader(station, start_time, end_time)
+  foo.run()
+"""
+from ftplib import FTP, error_perm
+from socket import gaierror
 import string
 import os
 from progress.bar import IncrementalBar
-import tempfile
 import subprocess
-import shlex
-import sys
+from glob import glob
+from datetime import datetime
+from typing import List
+
+MAIN_SERVER = 'geodesy.noaa.gov'
+ALT_SERVER = 'alt.ngs.noaa.gov'
+DIRECTORY_PATH = '/cors/rinex/{}/{:03d}/{}'
 
 
-class RinexFTPDownloader:
-    """ Downloads RINEX files from FTP server and merges them into one file.
+class RinexDownloader:
+    """ Downloads RINEX files from the FTP server.
+
+        Args:
+            station: 4-character site (base) identifier
+            start_time: datetime object
+            end_time: datetime object
+    """
+
+    def __init__(self, station: str, start_time: datetime, end_time: datetime, directory: str = ''):
+        self.__station = station.lower()
+        self.__start = start_time
+        self.__end = end_time
+        self.__directory = directory
+        self.__ftp = None
+
+    def __set_ftp(self):
+        """ Create new FTP object. """
+        try:
+            self.__ftp = FTP(MAIN_SERVER)
+        except gaierror:
+            try:
+                self.__ftp = FTP(ALT_SERVER)  # try alternate server
+            except gaierror:
+                raise RuntimeError(
+                    'Unable to connect to FTP. Please check your connection.')
+
+    def __ftp_connect(self):
+        """ Open up a connection with the FTP server. """
+        self.__set_ftp()
+        try:
+            # Check if connection is currently alive
+            self.__ftp.voidcmd('NOOP')
+        except error_perm:
+            try:
+                self.__ftp.login()
+            except:
+                raise RuntimeError(
+                    'Unable to connect to FTP. NOAA servers are down.')
+
+    def deconstruct_datetime(self, date: datetime) -> List[int]:
+        """ Extracts information from a datetime object
+
+        Args:
+                date: a datetime object
+
+        Returns: A list containing the year (int), day-of-year (int) and hour (int) extracted from the datetime object
+         """
+        year, month, day, hour, _, _, _, yday, _ = date.timetuple()
+        return [year, yday, hour]
+
+    def is_valid_station_code(self):
+        """ Checks if station code is valid (and accessible) on the FTP server. """
+        if not self.__station:
+            return False
+        self.__ftp_connect()
+        self.__ftp.cwd('/cors/station_log')
+        station_results = []
+        self.__ftp.retrlines('NLST *{}*'.format(self.__station),
+                             station_results.append)
+        return bool(station_results)
+
+    def get_days_left_in_year(self, date: datetime) -> int:
+        """ Get number of days left in the year given a specific date
+
+            Args:
+                date: datetime object
+
+            Returns: number of days left in the year
+
+         """
+        last_day_of_year = datetime.strptime(
+            '02/01/{}'.format(date.year+1), '%d/%m/%Y')
+        delta = last_day_of_year - date
+        return delta.days
+
+    def generate_file_names(self, year: int, yday: int, start: str, end: str) -> List[str]:
+        """ Generate a list of files using initialised variables that will be downloaded from FTP.
 
         Args:
             year: 4-digit year
-            day: 3-digit day-of-year
-            station: 4-character site (base) identifier
-            hour_block_[start|end]: for 1 hour long (60 minute duration) files this is a letter
-                                    a through x that corresponds to the start hour as shown below
-                                    00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23
-                                    a  b  c  d  e  f  g  h  i  j  k  l  m  n  o  p  q  r  s  t  u  v  w  x
+            yday: day-of-year
+            [start|end]: a letter 'a' through 'x' that corresponds to the start hour as shown below
+                    00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23
+                    a  b  c  d  e  f  g  h  i  j  k  l  m  n  o  p  q  r  s  t  u  v  w  x
 
-    """
-
-    def __init__(self, year: int, day: int, station: str, hour_block_start: str, hour_block_end: str):
-        self.__year = year
-        self.__day = day
-        self.__station = station
-        self.__start = hour_block_start
-        self.__end = hour_block_end
-        self.__file_list = None  # stores generated list of files to download from FTP server
-
-    @property
-    def file_list(self):
-        return self.__file_list
-
-    def create_file_list(self):
-        """ Generate a list of files using initialised variables that will be downloaded from FTP
-
+        Returns: List of file names
         """
-        if ord(self.__start) > ord(self.__end):
-            raise ValueError('Time range is invalid')
+        if type(year) is not int or len(str(year)) != 4:
+            raise ValueError('Year must be a 4-digit integer.')
+        if year < 1994 or year > datetime.now().year:
+            raise ValueError(
+                'Year must be between 1994 and {}.'.format(datetime.now().year))
+        if type(yday) is not int:
+            raise ValueError('Day-of-year must be a 3-digit integer.')
+        if yday < 0 or yday > 366:
+            raise ValueError('Day-of-year must be between 0 and 366')
+        if type(start) is not str or type(end) is not str:
+            raise ValueError('Start or end hour block must be a string.')
+        if not start or not end:
+            raise ValueError('Start or end hour block is invalid.')
+        elif len(start) > 1 or len(end) > 1:
+            raise ValueError('Start or end hour must be only one character.')
+        elif ord(start) > ord(end):
+            raise ValueError(
+                'Start hour block cannot be later than end hour block.')
+        elif ord(start) > ord('x') or ord(end) > ord('x'):
+            raise ValueError("Start or end hour block cannot exceed 'x'.")
 
-        # also check for or ord(self.__start) > ord('x') or ord(self.__end) > ord('x') much earlier on
+        # * We make use of in-built structures to efficiently generate all alphabetical letters between hour_block_start and hour_block_end
+        hour_range = string.ascii_lowercase[ord(start)-97: ord(end)-96]
+        return ["{}{:03d}{}.{}o.gz".format(self.__station, yday, h, year % 100) for h in hour_range]
 
-        # We make use of in-built structures to efficiently generate all
-        # alphabetical letters between hour_block_start and hour_block_end
-        hour_range = string.ascii_lowercase[ord(
-            self.__start)-97: ord(self.__end)-96]
-        self.__file_list = ["{}{}{}.{}o.gz".format(
-            self.__station, self.__day, h, self.__year % 100) for h in hour_range]
+    def create_file_list(self, directory_listing: str, current_day: int, start_year: int, start_day: int, start_hour: str, end_day: int, end_hour: str) -> List[str]:
+        """ Create list of files to download from FTP.
 
-    def merge_files(self, directory: str):
-        # ! Look into doing better error handling here
-        """ Decompresses Rinex files in a directory and merges them into one output file
+            Args:
+                directory_listing: ftp directory where files will be downloaded from
+                current_day: day-of-year
+                start_year: 4-digit year
+                start_day: day-of-year
+                start_hour: hour in 24-hour format
+                end_day: day-of-year
+                end_hour: hour in 24-hour format
 
-        Args:
-            directory: Path of directory that contains the rinex files
+            Returns: A list of file names.
 
-        """
-        subprocess.run(["gunzip", "-dr", directory])
-        merge_command = os.path.join(
-            directory, "{0}{1}*.{2}o > {0}{1}.{2}.obs".format(self.__station, self.__day, self.__year % 100))
-        # Output file will be saved in the location where you called this script
-        subprocess.run("./teqc {}".format(merge_command), shell=True)
+         """
+        file_list = []
+        start_hour = chr(start_hour+97)
+        end_hour = chr(end_hour+97)
 
-    def grab_data(self):
-        """ Driver function that downloads RINEX files from FTP server and merges them into one file.
+        standard_day_log = "{}{:03d}0.{}o.gz".format(
+            self.__station, current_day, start_year % 100)
+        # older full day logs look different and are compressed differently
+        hatanaka_day_log = "{}{:03d}0.{}d.Z".format(
+            self.__station, current_day, start_year % 100)
 
-        """
-        with FTP("geodesy.noaa.gov") as ftp:
+        if standard_day_log in directory_listing:
+            # download full day log in available
+            file_list.append(standard_day_log)
+        elif hatanaka_day_log in directory_listing:
+            file_list.append(hatanaka_day_log)
+        else:
+            # generate all files to download using their hour block code
+            if current_day == start_day:
+                # on start day, get all files from start_hour to x
+                file_list = self.generate_file_names(
+                    start_year, start_day, start_hour, 'x')
+            elif current_day == end_day:
+                # on end day, get all files up to end_hour
+                file_list = self.generate_file_names(
+                    start_year, end_day, 'a', end_hour)
+            else:
+                # on in-between day, get all files
+                file_list = self.generate_file_names(
+                    start_year, current_day, 'a', 'x')
+        return file_list
+
+    def download(self):
+        """ Download files within a specific time window from the FTP server. """
+        self.__ftp_connect()
+        with self.__ftp as ftp:
             try:
-                ftp.login()
-                ftp.cwd("/cors/rinex/{}/{}/{}".format(self.__year,
-                                                      self.__day, self.__station))
-                directory_files = ftp.nlst()
+                if not self.is_valid_station_code():
+                    raise ValueError('Station code is not valid!')
 
-                with tempfile.TemporaryDirectory() as temp_dir:
+                start_year, start_day, start_hour = self.deconstruct_datetime(
+                    self.__start)
+                end_year, end_day, end_hour = self.deconstruct_datetime(
+                    self.__end)
 
-                    full_day_log = "{}{}0.{}o.gz".format(
-                        self.__station,  self.__day, self.__year % 100)
+                # go through directories and download all relevant files
+                current_day = start_day
+                while start_year <= end_year:
+                    while current_day <= end_day:
+                        ftp.cwd(DIRECTORY_PATH.format(
+                            start_year, current_day, self.__station))
+                        directory_listing = ftp.nlst()
 
-                    # Check if daily log in folder
-                    if full_day_log in directory_files:
-                        with IncrementalBar('Downloading file', max=1) as bar:
-                            ftp.retrbinary('RETR {}'.format(full_day_log),
-                                           open(os.path.join(temp_dir, full_day_log), 'wb').write)
-                            bar.next()
-                            bar.finish()
-                    else:  # Otherwise download hourly logs
-                        self.create_file_list()
-                        with IncrementalBar('Downloading files', max=len(self.__file_list)) as bar:
-                            for file in self.__file_list:
-                                if file in directory_files:
+                        # generate files to download in current directory
+                        file_list = self.create_file_list(
+                            directory_listing, current_day, start_year, start_day, start_hour, end_day, end_hour)
+
+                        # Download files from FTP and store them into specified directory (by default, will save in current folder)
+                        with IncrementalBar('Downloading files', max=len(file_list)) as bar:
+                            for file in file_list:
+                                if file in directory_listing:
                                     ftp.retrbinary('RETR {}'.format(file),
-                                                   open(os.path.join(temp_dir, file), 'wb').write)
+                                                   open(os.path.join(self.__directory, file), 'wb').write)
                                     bar.next()
                                 else:
-                                    print(
-                                        "Could only find logs up to hour block {}".format(file))
+                                    print("Could not find {}".format(file))
                                     bar.finish()
                                     break
-                    print("Merging files")
-                    self.merge_files(temp_dir)
-                    print("Process completed!")
+                        current_day += 1
+                    start_year += 1
+
             except Exception as e:
-                print("Error during download from FTP:", e)
-
-
-if __name__ == "__main__":
-    r = RinexFTPDownloader(2019, 314, 'nybp', 'a', 'b')
-    r.grab_data()
+                raise e
