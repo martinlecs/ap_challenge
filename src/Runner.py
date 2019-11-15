@@ -1,9 +1,8 @@
-"""A one line summary of the module or program, terminated by a period.
+"""Class responsible for running the RinexDownloader and RinexMerger
 
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+The most important feature about this class is that it requires the user to pass
+in the RinexDownloader and RinexMerger as arguments into the constructor. This is done to 
+abstract away the initialisation detaiils of the injected dependencies.
 
   Typical usage example:
 
@@ -17,6 +16,15 @@ from src.Merger import RinexMerger
 
 
 class RinexRunner:
+    """ Initialises and runs the RinexDownloader and Rinex Merger
+
+        Args:
+            station: 4-character site (base) identifier
+            start_date: a datetime object
+            end_date: a datetime object
+            downloader: reference to RinexDownloader (uninitialised)
+            merger: reference to RinexMerger (uninitialised)
+     """
 
     def __init__(self, station: str, start_date: datetime, end_date: datetime, downloader: RinexDownloader, merger: RinexMerger):
         self.__station = station
