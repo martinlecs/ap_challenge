@@ -20,13 +20,13 @@ END_TIMESTAMP = '{}{:02d}{:02d}{:02d}5959'
 
 
 class RinexMerger:
-    """ Merges multiple Rinex files together into one file. 
+    """ Merges multiple RINEX files together into one file. 
 
         Args:
             station: 4-character site (base) identifier
             start_time: datetime object
             end_time: datetime object
-            directory: path to directory containing Rinex files
+            directory: path to directory containing RINEX files (default: current directory)
     """
 
     def __init__(self, station: str, start_time: datetime, end_time: datetime, directory: str = ''):
@@ -36,6 +36,13 @@ class RinexMerger:
         self.__directory = directory
 
     def deconstruct_datetime(self, date: datetime) -> List[int]:
+        """ Extracts information from a datetime object
+
+            Args:
+                date: a datetime object
+
+            Returns: A list containing the year, month, day and hour extracted from the datetime object
+         """
         year, month, day, hour, _, _, _, _, _ = date.timetuple()
         return [year, month, day, hour]
 
@@ -51,24 +58,24 @@ class RinexMerger:
                 'Could not decompress. No files were downloaded from FTP server.')
 
     def merge(self):
-        """ Merges RINEX files and extracts required time window from merged file
-
-        Args:
-            directory: Path of directory that contains the downloaded files
-
-        """
+        """ Merges RINEX files and extracts required time window from merged file. """
         self.__decompress_files()
         # ! Error handling, what if none of these are installed?
         daily_logs = glob('{}/*0.??o'.format(self.__directory)) + \
             glob('{}/*.??d'.format(self.__directory))
-
-        # ? Merge and extract the time window from the Rinex files if using daily logs
-        if daily_logs:
-            start_timestamp = START_TIMESTAMP.format(*self.__start)
-            end_timestamp = END_TIMESTAMP.format(*self.__end)
-            subprocess.run(
-                ['./teqc -st {0} -e {1} {2}/{3}*.??o > {3}.obs'.format(start_timestamp, end_timestamp, self.__directory, self.__station)], capture_output=True, shell=True)
-        else:
-            # * Merge files as is if there are no daily logs present
-            subprocess.run(
-                "./teqc {0}/{1}*.??o > {0}/merged.obs".format(self.__directory, self.__station), capture_output=True, shell=True)
+        try:
+            # Merge and extract the time window from the Rinex files if using daily logs
+            if daily_logs:
+                start_timestamp = START_TIMESTAMP.format(*self.__start)
+                end_timestamp = END_TIMESTAMP.format(*self.__end)
+                # * files must be entered in their chronological order. Glob does this for us by default unlike shell wildcard expansions
+                files = ' '.join(glob('{}/*.??o'.format(self.__directory)))
+                print(files)
+                subprocess.run(
+                    ['./teqc -O.s M -st {0} -e {1} {2} > {3}.obs'.format(start_timestamp, end_timestamp, files, self.__station)], capture_output=True, shell=True)
+            else:
+                # * Merge files as is if there are no daily logs present
+                subprocess.run(
+                    "./teqc -O.s M {0}/{1}*.??o > {1}.obs".format(self.__directory, self.__station), capture_output=True, shell=True)
+        except:
+            raise RuntimeError('Error occured while trying to merge files.')

@@ -101,6 +101,20 @@ class RinexDownloader:
         delta = last_day_of_year - date
         return delta.days
 
+    def get_days_in_year(self, year: int) -> int:
+        """ Gets the total number of days in a given year. 
+
+            Args:
+                year: 4-digit year
+
+            Returns: The total number of days in a year
+
+        """
+        date_format = '%d/%m/%Y'
+        start = datetime.strptime('01/01/{}'.format(year), date_format)
+        end = datetime.strptime('31/12/{}'.format(year), date_format)
+        return (end - start).days + 1
+
     def generate_file_names(self, year: int, yday: int, start: str, end: str) -> List[str]:
         """ Generate a list of files using initialised variables that will be downloaded from FTP.
 
@@ -197,10 +211,16 @@ class RinexDownloader:
                 end_year, end_day, end_hour = self.deconstruct_datetime(
                     self.__end)
 
-                # go through directories and download all relevant files
+                day_count = 0
                 current_day = start_day
+                days_between_dates = (
+                    self.__end.date() - self.__start.date()).days + 1
+                days_left_in_year = self.get_days_left_in_year(self.__start)
+
+                # go through directories and download all relevant files
                 while start_year <= end_year:
-                    while current_day <= end_day:
+                    while day_count < days_between_dates and day_count < days_left_in_year:
+
                         ftp.cwd(DIRECTORY_PATH.format(
                             start_year, current_day, self.__station))
                         directory_listing = ftp.nlst()
@@ -209,7 +229,7 @@ class RinexDownloader:
                         file_list = self.create_file_list(
                             directory_listing, current_day, start_year, start_day, start_hour, end_day, end_hour)
 
-                        # Download files from FTP and store them into specified directory (by default, will save in current folder)
+                        # Download files from FTP and store them into specified directory(by default, will save in current folder)
                         with IncrementalBar('Downloading files', max=len(file_list)) as bar:
                             for file in file_list:
                                 if file in directory_listing:
@@ -217,11 +237,17 @@ class RinexDownloader:
                                                    open(os.path.join(self.__directory, file), 'wb').write)
                                     bar.next()
                                 else:
-                                    print("Could not find {}".format(file))
                                     bar.finish()
+                                    print(
+                                        "Warning: your end timestamp exceeds the logs that are currently available on the FTP server.")
                                     break
+
                         current_day += 1
+                        day_count += 1
+
                     start_year += 1
+                    current_day = 1
+                    days_left_in_year = self.get_days_in_year(start_year)
 
             except Exception as e:
                 raise e
