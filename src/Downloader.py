@@ -246,7 +246,7 @@ class RinexDownloader:
                         day_count += 1
 
                     start_year += 1
-                    current_day = 1
+                    current_day = 1  # set current day to first day of the new year
                     days_left_in_year = self.get_days_in_year(start_year)
 
             except Exception as e:
