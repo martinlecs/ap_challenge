@@ -9,10 +9,8 @@ autopep8 = "*"
 
 [packages]
 pytest = "*"
-ipython = "*"
 progress = "*"
 click = "*"
-python-dotenv = "*"
 
 [requires]
 python_version = "3.7"
