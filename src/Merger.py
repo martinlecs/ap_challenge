@@ -1,9 +1,8 @@
-"""A one line summary of the module or program, terminated by a period.
+"""Class responsible for decompressing and merging RINEX files.
 
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+Decompresses Gzipped or Hatanaka compressed files.
+Merges files using TEQC with specified time-window and outputs file
+to root directory of project.
 
   Typical usage example:
 
@@ -42,7 +41,8 @@ class RinexMerger:
             Args:
                 date: a datetime object
 
-            Returns: A list containing the year, month, day and hour extracted from the datetime object
+            Returns: 
+                A list containing the year, month, day and hour extracted from the datetime object
          """
         year, month, day, hour, _, _, _, _, _ = date.timetuple()
         return [year, month, day, hour]
@@ -74,12 +74,12 @@ class RinexMerger:
             if daily_logs:
                 start_timestamp = START_TIMESTAMP.format(*self.__start)
                 end_timestamp = END_TIMESTAMP.format(*self.__end)
-                # * files must be entered in their chronological order. Glob does this for us by default unlike shell wildcard expansions
+                # files must be entered in their chronological order. Glob does this for us by default unlike shell wildcard expansions
                 files = ' '.join(glob('{}/*.??o'.format(self.__directory)))
                 subprocess.run(
                     ['./teqc -O.s M -st {0} -e {1} {2} > {3}.obs'.format(start_timestamp, end_timestamp, files, self.__station)], capture_output=True, shell=True)
             else:
-                # * Merge files as is if there are no daily logs present
+                # Merge files as is if there are no daily logs present
                 subprocess.run(
                     "./teqc -O.s M {0}/{1}*.??o > {1}.obs".format(self.__directory, self.__station), capture_output=True, shell=True)
         except:

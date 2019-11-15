@@ -11,8 +11,14 @@ from src.Merger import RinexMerger
 @click.argument('station', type=str)
 @click.argument('start_date', type=click.DateTime(formats=['%Y-%m-%dT%H:%M:%SZ']))
 @click.argument('end_date', type=click.DateTime(formats=['%Y-%m-%dT%H:%M:%SZ']))
-def cli(station: str, start_date: str, end_date: str):
-    """ Downloads RINEX files from FTP server and merges them into one file """
+def cli(station: str, start_date: datetime, end_date: datetime):
+    """ Downloads RINEX files from FTP server and merges them into one file 
+
+        Args:
+            station: 4-character site (base) identifier
+            start_date: datetime object
+            end_date: datetime object
+    """
     try:
         if start_date > end_date:
             raise ValueError('Start date is past end date')

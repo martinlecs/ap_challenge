@@ -1,14 +1,12 @@
-"""A one line summary of the module or program, terminated by a period.
+"""Class responsible for downloading RINEX files from the NOAA FTP server.
 
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+The class will connect to the FTP, dynamically generate a list of required files,
+download them and save them to a specified directory.
 
   Typical usage example:
 
-  foo = RinexFTPDownloader(station, start_time, end_time)
-  foo.run()
+  foo = RinexDownloader(station, start_time, end_time, directoy)
+  foo.download()
 """
 from ftplib import FTP, error_perm
 from socket import gaierror
@@ -32,6 +30,7 @@ class RinexDownloader:
             station: 4-character site (base) identifier
             start_time: datetime object
             end_time: datetime object
+            directory: file path to location where files will be saved to (default: current directory)
     """
 
     def __init__(self, station: str, start_time: datetime, end_time: datetime, directory: str = ''):
@@ -71,13 +70,18 @@ class RinexDownloader:
         Args:
                 date: a datetime object
 
-        Returns: A list containing the year (int), day-of-year (int) and hour (int) extracted from the datetime object
+        Returns: 
+            A list containing the year (int), day-of-year (int) and hour (int) extracted from the datetime object
          """
         year, month, day, hour, _, _, _, yday, _ = date.timetuple()
         return [year, yday, hour]
 
     def is_valid_station_code(self):
-        """ Checks if station code is valid (and accessible) on the FTP server. """
+        """ Checks if station code is valid (and accessible) on the FTP server. 
+
+            Returns: 
+                True if valid station. Otherwise False.
+        """
         if not self.__station:
             return False
         self.__ftp_connect()
@@ -93,8 +97,8 @@ class RinexDownloader:
             Args:
                 date: datetime object
 
-            Returns: number of days left in the year
-
+            Returns: 
+                number of days left in the year
          """
         last_day_of_year = datetime.strptime(
             '02/01/{}'.format(date.year+1), '%d/%m/%Y')
@@ -107,8 +111,8 @@ class RinexDownloader:
             Args:
                 year: 4-digit year
 
-            Returns: The total number of days in a year
-
+            Returns: 
+                The total number of days in a year
         """
         date_format = '%d/%m/%Y'
         start = datetime.strptime('01/01/{}'.format(year), date_format)
@@ -125,7 +129,8 @@ class RinexDownloader:
                     00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23
                     a  b  c  d  e  f  g  h  i  j  k  l  m  n  o  p  q  r  s  t  u  v  w  x
 
-        Returns: List of file names
+        Returns: 
+            List of file names
         """
         if type(year) is not int or len(str(year)) != 4:
             raise ValueError('Year must be a 4-digit integer.')
@@ -148,7 +153,7 @@ class RinexDownloader:
         elif ord(start) > ord('x') or ord(end) > ord('x'):
             raise ValueError("Start or end hour block cannot exceed 'x'.")
 
-        # * We make use of in-built structures to efficiently generate all alphabetical letters between hour_block_start and hour_block_end
+        # We make use of in-built structures to efficiently generate all alphabetical letters between hour_block_start and hour_block_end
         hour_range = string.ascii_lowercase[ord(start)-97: ord(end)-96]
         return ["{}{:03d}{}.{}o.gz".format(self.__station, yday, h, year % 100) for h in hour_range]
 
@@ -164,7 +169,8 @@ class RinexDownloader:
                 end_day: day-of-year
                 end_hour: hour in 24-hour format
 
-            Returns: A list of file names.
+            Returns: 
+                A list of file names.
 
          """
         file_list = []
