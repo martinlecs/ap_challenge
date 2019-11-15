@@ -1,4 +1,6 @@
+from glob import glob
 import pytest
+import tempfile
 from datetime import datetime
 from src.Downloader import RinexDownloader
 
@@ -89,5 +91,18 @@ def test_days_in_year(test_input, expected):
     assert r.get_days_in_year(test_input) == expected
 
 
-def test_run():
-    pass
+@pytest.mark.parametrize('test_input,expected', [
+    (['nybp', '2017-12-31T23:11:22Z', '2018-01-01T01:33:44Z'],
+     ['nybp3650.17d.Z', 'nybp0010.18d.Z']),
+    (['nybp', '2017-09-14T23:11:22Z', '2017-09-15T01:33:44Z'],
+     ['nybp2580.17d.Z', 'nybp2570.17d.Z']),
+])
+def test_download(test_input, expected):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        station, start, end = test_input
+        start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M:%SZ')
+        end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M:%SZ')
+        r = RinexDownloader(station, start_date, end_date, temp_dir)
+        r.download()
+        assert glob('{}/*'.format(temp_dir)
+                    ) == ['{}/{}'.format(temp_dir, i) for i in expected]

@@ -217,13 +217,19 @@ class RinexDownloader:
                 end_year, end_day, end_hour = self.deconstruct_datetime(
                     self.__end)
 
+                # The following algorithm calculates the days between the start_date and end_date
+                # And downloads all the files between the two dates.
+                # To handle the case where you want to download files across multiple years
+                # We keep track of how many days are left in the year and once we've reached that limit
+                # We increment the year, set the current_day to the first day of the new year since we "rolling over" to a new year
+                # and continue the loop and until we have downloaded all the files necessary
+
                 day_count = 0
-                current_day = start_day
+                current_day = start_day  # day-of-year
                 days_between_dates = (
                     self.__end.date() - self.__start.date()).days + 1
                 days_left_in_year = self.get_days_left_in_year(self.__start)
 
-                # go through directories and download all relevant files
                 while start_year <= end_year:
                     while day_count < days_between_dates and day_count < days_left_in_year:
 
@@ -238,6 +244,8 @@ class RinexDownloader:
                         # Download files from FTP and store them into specified directory(by default, will save in current folder)
                         with IncrementalBar('Downloading files', max=len(file_list)) as bar:
                             for file in file_list:
+                                original_extension = '.'.join(
+                                    file.split('.')[1:])
                                 if file in directory_listing:
                                     ftp.retrbinary('RETR {}'.format(file),
                                                    open(os.path.join(self.__directory, file), 'wb').write)
@@ -252,7 +260,8 @@ class RinexDownloader:
                         day_count += 1
 
                     start_year += 1
-                    current_day = 1  # set current day to first day of the new year
+                    current_day = 1  # set current day to first day of the new year ie. 01/01/YYYY
+                    # we have a specific function for getting days in year (rather than setting to 365) to automatically handle the case of leap years
                     days_left_in_year = self.get_days_in_year(start_year)
 
             except Exception as e:
