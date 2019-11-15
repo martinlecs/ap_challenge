@@ -15,8 +15,6 @@ from datetime import datetime
 from src.Downloader import RinexDownloader
 from src.Merger import RinexMerger
 
-# ! doesn't make sense here to use dependency injection
-
 
 class RinexRunner:
 

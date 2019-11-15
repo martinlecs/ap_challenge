@@ -1,0 +1,22 @@
+filename:                nybp.obs
+file format:             RINEX
+file size (bytes):       980238
+start date & time:       2017-12-31 23:00:00.000
+final date & time:       2018-01-01 01:59:30.000
+sample interval:         30.0000
+possible missing epochs: 1
+4-char station code:     NYBP
+station name:            NYBP
+station ID number:       NYBP
+antenna ID number:       30260372
+antenna type:            TRM55971.00     NONE
+antenna latitude (deg):      40.701060229
+antenna longitude (deg):    -74.014319178
+antenna elevation (m):           -14.4518
+antenna height (m):      0.0502
+receiver ID number:      4730K06583
+receiver type:           TRIMBLE NETR5
+receiver firmware:       4.85
+RINEX version:           2.11
+RINEX translator:        teqc  2019Feb25
+trans date & time:       2019-11-15 01:41:53.000

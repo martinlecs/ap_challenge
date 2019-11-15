@@ -80,5 +80,14 @@ def test_days_left_in_year(test_input, expected):
     assert r.get_days_left_in_year(d) == expected
 
 
+@pytest.mark.parametrize('test_input,expected', [
+    (2019, 365),
+    (2020, 366)
+])
+def test_days_in_year(test_input, expected):
+    r = RinexDownloader('nybp', datetime.now(), datetime.now(), 'output')
+    assert r.get_days_in_year(test_input) == expected
+
+
 def test_run():
     pass
