@@ -7,8 +7,8 @@ examples.
 
   Typical usage example:
 
-  foo = RinexFTPDownloader(station, start_time, end_time)
-  foo.run()
+  foo = RinexMerger(station, start_time, end_time, directory)
+  foo.merge()
 """
 import os
 import subprocess
@@ -50,7 +50,7 @@ class RinexMerger:
     def __decompress_files(self):
         """ Decompresses all downloaded Rinex files inside a specified directory. """
         if not os.path.isfile('CRX2RNX'):
-            raise OSError('Missing CRX2RNX binary!')
+            raise OSError('Cannot find CRX2RNX binary in root directory!')
 
         if glob('{}/*'.format(self.__directory)):
             subprocess.run(["gunzip", "-dr", self.__directory])
@@ -63,12 +63,10 @@ class RinexMerger:
 
     def merge(self):
         """ Merges RINEX files and extracts required time window from merged file. """
-        # Check that binaries exist in root directory of project
         if not os.path.isfile('teqc'):
-            raise OSError('Missing TEQC binary!')
+            raise OSError('Cannot find TEQC binary in root directory!')
 
         self.__decompress_files()
-        # ! Error handling, what if none of these are installed?
         daily_logs = glob('{}/*0.??o'.format(self.__directory)) + \
             glob('{}/*.??d'.format(self.__directory))
         try:
