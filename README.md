@@ -79,8 +79,8 @@ Download and merge observation files for station P589 from 22:30:54UTC 31-12-201
 
 If you have the installed the complete dev environment setup, you can run tests using the following command from the root of the project:
 
+`$ python -m pytest tests/`
+
 Unfortunately, due to time constraints, there isn't 100% code coverage (its on the TODO list!). However I have done my best to at least unit test the hotspots and main functions. A more complete (and varied) end-to-end test is definitely something I would like to implement in the future.
 
 At the moment, for e-2-e testing, I'm downloading a set of files, merging and comparing their meta information with some expected output using the `teqc +meta` command and the diff tool.
-
-`$ python -m pytest tests/`
