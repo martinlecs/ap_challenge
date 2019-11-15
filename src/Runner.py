@@ -29,9 +29,9 @@ class RinexRunner:
         """ Downloads multiple RINEX files from FTP and merges them into a single file. """
         with tempfile.TemporaryDirectory() as temp_dir:
             downloader = self.__downloader(
-                self.__station, self.__start_date, self.__end_date, 'output')
+                self.__station, self.__start_date, self.__end_date, temp_dir)
             merger = self.__merger(
-                self.__station, self.__start_date, self.__end_date, 'output')
+                self.__station, self.__start_date, self.__end_date, temp_dir)
             downloader.download()
             print("Merging files...")
             merger.merge()

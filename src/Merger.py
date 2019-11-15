@@ -10,6 +10,7 @@ examples.
   foo = RinexFTPDownloader(station, start_time, end_time)
   foo.run()
 """
+import os
 import subprocess
 from glob import glob
 from datetime import datetime
@@ -48,6 +49,9 @@ class RinexMerger:
 
     def __decompress_files(self):
         """ Decompresses all downloaded Rinex files inside a specified directory. """
+        if not os.path.isfile('CRX2RNX'):
+            raise OSError('Missing CRX2RNX binary!')
+
         if glob('{}/*'.format(self.__directory)):
             subprocess.run(["gunzip", "-dr", self.__directory])
             # convert Hatanaka compressed RINEX to standard RINEX
@@ -59,6 +63,10 @@ class RinexMerger:
 
     def merge(self):
         """ Merges RINEX files and extracts required time window from merged file. """
+        # Check that binaries exist in root directory of project
+        if not os.path.isfile('teqc'):
+            raise OSError('Missing TEQC binary!')
+
         self.__decompress_files()
         # ! Error handling, what if none of these are installed?
         daily_logs = glob('{}/*0.??o'.format(self.__directory)) + \
@@ -70,7 +78,6 @@ class RinexMerger:
                 end_timestamp = END_TIMESTAMP.format(*self.__end)
                 # * files must be entered in their chronological order. Glob does this for us by default unlike shell wildcard expansions
                 files = ' '.join(glob('{}/*.??o'.format(self.__directory)))
-                print(files)
                 subprocess.run(
                     ['./teqc -O.s M -st {0} -e {1} {2} > {3}.obs'.format(start_timestamp, end_timestamp, files, self.__station)], capture_output=True, shell=True)
             else:
