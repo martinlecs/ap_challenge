@@ -23,7 +23,8 @@ def cli(station: str, start_date: datetime, end_date: datetime):
         if start_date > end_date:
             raise ValueError('Start date is past end date')
         if start_date > datetime.now() or end_date > datetime.now():
-            raise ValueError('Cannot download log files from future dates')
+            raise ValueError(
+                'FTP does not have log files that extend all the way to your end date yet.')
         if start_date.year < 1994 or end_date.year < 1994:
             raise ValueError('Date is too early')
 
