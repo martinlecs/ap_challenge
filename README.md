@@ -69,6 +69,10 @@ Download and merge observation files for station P589 from 22:30:54UTC 31-12-201
 
 ## Design Decisions
 
+**Figure 1. Basic program flow overview.**
+
+![UML sequence diagram for program](https://imgur.com/a/Qs9xmbB)
+
 - I stuck by the Single Responsibility Principle and created individual classes (Downloader, Merger) in an effort to separate my concerns. I then created a Runner class which takes in a Downloader and Merger as its args (Dependency Injection). In this current context, DI isn't strictly necessary but it does help clean up the code and abstract minor details away.
 
 - **Decimation**: Observation files in the last 48 hours contain data sampled at rates of 1 second, 15 seconds, and 30 seconds whereas observation files older than 2 months or so only contain data that is sampled at a rate of every 30 seconds. When you merge an old file with a new file, the sample interval for the merged file is automatically set to 1 second. However, when you merge an old file with another old file, the default sample interval for the merged file is 30 seconds. At the moment, the program just returns whatever is set by default by TEQC, however, in order to maintain consistency with our output, it would be best to convert ALL files to a common sample interval. For example, to convert all files to 30 second sample intervals, we can pass the merged file into TEQC and run the following command `teqc -O.dec 30 input.obs > output.obs`.
