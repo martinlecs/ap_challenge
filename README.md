@@ -71,7 +71,7 @@ Download and merge observation files for station P589 from 22:30:54UTC 31-12-201
 
 **Figure 1. Basic program flow overview.**
 
-![UML sequence diagram for program](https://imgur.com/a/Qs9xmbB)
+![UML sequence diagram for program](https://imgur.com/4cSHJom)
 
 - I stuck by the Single Responsibility Principle and created individual classes (Downloader, Merger) in an effort to separate my concerns. I then created a Runner class which takes in a Downloader and Merger as its args (Dependency Injection). In this current context, DI isn't strictly necessary but it does help clean up the code and abstract minor details away.
 
