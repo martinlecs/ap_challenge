@@ -65,6 +65,7 @@ Download and merge observation files for station P589 from 22:30:54UTC 31-12-201
 - Complete end-to-end testing hasn't been implemented for all test cases yet, but covers the main cases.
 - Only extensively tested on Mac OSX v10.14.6. However, code has loose coupling with OS structure so portability should not be an issue.
 - Although it is possible to handle ISO8601 strings of different formats, I've chosen to constrain the timestamp inputs to exactly what was shown as an example in the [original specification](https://github.com/PropellerAero/aeropoint-programming-challenge) to make implementation easier for myself. However, this could easily be extended upon and made more flexible for the user.
+- The output of this program does not match the exact example output in the project specification repository. The only difference between my output and the expected output are the comment headers. This could just be due to differing versions of TEQC producing slightly different outputs or there might be a flag that I'm not using that I should, however, aside from the comment headers, my output is identical to the expected example output.
 
 ## Design Decisions
 
@@ -83,6 +84,8 @@ Download and merge observation files for station P589 from 22:30:54UTC 31-12-201
 - Implemented a rudimentary progress bar via the progress package to show give the user some system feedback; according to Sharp et. al 2019, providing the user with system feedback allows for a more pleasing experience.
 
 - Although, I've mentioned above how important system feedback is, I've chosen to hide the TEQC output from the user. Often when you merge files together, sometimes there will be chunks of data of missing (which is normal) and TEQC will print warning messages that aren't very helpful. The sheer amount of output from TEQC is confusing and hard for a user to process. An alternative, human-readable message should be displayed in its place instead. Possibly offering a solution to the warnings.
+
+- TEQC must receive files in a specific order, or it will fail to produce the desired output. We cannot just use wildcard expansions and pipe them all into TEQC, as this is not deterministic across systems and does not order files correctly. Files must be piped into to TEQC in order of the oldest to the latest files. For this reason, I've had to implement a filename sorting function to handle cases where, for example, `0010.19` is incorrectly ordered before `365.18`. Another example is where `315a.19` is incorrectly ordered before `3140.19`. This occurs because python's glob library lists files by alphabetical order by default (in most cases, not all the time).
 
 ## Future Improvements
 
@@ -107,3 +110,7 @@ My methodology, for when I implement e-2-e testing, is to download a set of file
 ## References
 
 Sharp, H, Preece, J, Rogers, Y 2019, Interaction Design – Beyond Human-Computer Interaction, John Wiley & Sons, Indianapolis.
+
+---
+
+License: [CC-BY](https://creativecommons.org/licenses/by/3.0/)
